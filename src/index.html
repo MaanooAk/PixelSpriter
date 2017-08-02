@@ -1,0 +1,496 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+
+	<title>PixelSpriter</title>
+
+	<style>
+
+input, button, canvas {
+	margin: 4px 2px;
+}
+
+canvas {
+	border: 1px solid #ddd;
+	user-select: none;
+	cursor: default;
+}
+
+	</style>
+
+	<script>
+"use strict";
+
+// Qs.min.js
+function qi(a){return document.getElementById(a)}function q(a){return document.querySelector(a)}function qa(a){return document.querySelectorAll(a)}function qs(a,b){return a.querySelector(b)}function qas(a,b){return a.querySelectorAll(b)}function ff(a,b){for(var c=a.length,e=0;e<c;e+=1)b(a[e])}function qaff(a,b){ff(document.querySelectorAll(a),b)}function qasff(a,b,c){ff(a.querySelectorAll(b),c)}function fif(a,b){for(var c=0;c<a;c+=1)b(c)}
+function cls(a,b,c){var e=b.length,f=c.length,d;for(d=0;d<e;d+=1)a.classList.add(b[d]);for(d=0;d<f;d+=1)a.classList.remove(c[d])}function qacls(a,b,c){a=document.querySelectorAll(a);for(var e=a.length,f=0;f<e;f+=1)cls(a[f],b,c)}function qascls(a,b,c,e){a=a.querySelectorAll(b);b=a.length;for(var f=0;f<b;f+=1)cls(a[f],c,e)}
+function r(a,b,c,e,f){var d=new XMLHttpRequest;d.onreadystatechange=function(){4===d.readyState&&(200<=d.status&&300>d.status?e(d.responseText,d.status):f(d.responseText,d.status))};var h=[],g;for(g in c)""!==c[g]?h.push(encodeURIComponent(g)+"="+encodeURIComponent(c[g])):h.push(encodeURIComponent(g));c=h.join("&");"POST"===a?(d.open(a,b,!0),d.setRequestHeader("Content-type","application/x-www-form-urlencoded"),d.send(c)):(""!==c&&(b+="?"+c),d.open(a,b,!0),d.send())}
+function rp(a,b,c,e){r("POST",a,b,c,e)}function rg(a,b,c,e){r("GET",a,b,c,e)}function rgr(a,b,c){r("GET",a,{},b,c)}function cloneTemplate(a){return document.getElementById(a).content.children[0].cloneNode(!0)}function elementFromHtml(a){var b=document.createElement("div");b.innerHTML=a;return b.children[0]}function onEnter(a,b){a.addEventListener("keydown",function(a){13===a.keyCode&&(b(a),a.preventDefault())})}
+function onScrollNearEnd(a,b){window.onscroll=function(){window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-a&&b(window.innerHeight+window.scrollY-document.documentElement.scrollHeight+a)}};
+
+// utils.js
+
+function get_def(value, def) {
+	return (typeof value == 'undefined') ? def : value;
+}
+
+function debug(text) {
+	console.log(text);
+}
+
+function filename(file) {
+	return file.substr(0, file.lastIndexOf("."));
+}
+
+function image_from_file(file) {
+	let image = new Image();
+	image.src = URL.createObjectURL(file);
+	return image;
+}
+
+function color_from_array(d, i) {
+	if (d[i+3] == 255) {
+		return "rgb("+d[i]+","+d[i+1]+","+d[i+2]+")";
+	} else {
+		return "rgba("+d[i]+","+d[i+1]+","+d[i+2]+","+d[i+3]+")";
+	}
+}
+
+function colorhue_from_array(d, i) {
+	return (Math.atan2(1.732050808 * (d[i+1] - d[i+2]), (2 * d[i] - d[i+1] - d[i+2])) * 57.295779513 + 300)|0 % 300 + 300;
+}
+
+function color_to_array(d, i, color) {
+	let parts = color.substring(color.indexOf("(")+1, color.lastIndexOf(")")).split(",");
+	parts.push("255");
+	d[i] = parseInt(parts[0]);
+	d[i+1] = parseInt(parts[1]);
+	d[i+2] = parseInt(parts[2]);
+	d[i+3] = parseInt(parts[3]);
+}
+
+// script.js
+
+var canvas;
+var g;
+
+var sprite_name;
+
+var sprite_base_file;
+var sprite_mask_file;
+
+var sprite_base_image;
+var sprite_mask_image;
+
+var sprite_base;
+var sprite_mask;
+
+var colors;
+
+var color = "rbg(255,255,255)";
+var color1 = "rbg(255,255,255)";
+
+var masked;
+
+var show = {
+	base: true,
+	mask: true,
+	black: true
+}
+
+var size = {
+	w: 0,
+	h: 0,
+	x_count: 6,
+	y_count: 6,
+	p: 2,
+	p_edit: 8
+}
+
+function load() {
+
+	// variables
+
+	canvas = {
+		colors: qi("colors"),
+		sprite: qi("sprite"),
+		animation: qi("animation"),
+		part: qi("part")
+	};
+
+	g = {
+		colors: canvas.colors.getContext("2d"),
+		sprite: canvas.sprite.getContext("2d"),
+		animation: canvas.animation.getContext("2d"),
+		part: canvas.part.getContext("2d")
+	};
+
+	// events
+
+	qi("files").onchange = files_changed;
+
+	canvas.sprite.onmousedown = onmousedown_sprite;
+	canvas.part.onmousedown = onmousedown_part;
+	canvas.part.onmousemove = onmousemove_part;
+	canvas.part.onmouseup = onmouseup_part;
+	canvas.colors.onmousedown = onmousedown_colors;
+
+	// methods
+
+	qaff("canvas", (i) => {
+		i.dragable = false;
+	});
+
+	update_size();
+
+	debug("loaded");
+
+}
+
+function update_size() {
+
+	set_size(canvas.colors, size.w > 0 ? 100 : 0, size.h ? 200 : 0);
+	set_size(canvas.sprite, size.w * size.x_count * size.p, size.h * size.y_count * size.p);
+	set_size(canvas.animation, size.w * size.p, size.h * size.p);
+	set_size(canvas.part, size.w * size.p_edit, size.h * size.p_edit);
+
+}
+
+function set_size(i, width, height) {
+	i.width = width;
+	i.height = height;
+}
+
+function files_changed() {
+
+	const file_in = qi("files").files;
+
+	if (file_in.length == 1) {
+
+		sprite_name = filename(file_in[0].name);
+
+		sprite_base_file = file_in[0];
+		sprite_base_image = image_from_file(sprite_base_file);
+
+		masked = false;
+
+	} else if (file_in.length == 2) {
+
+		const i = (filename(file_in[0].name) > filename(file_in[1].name)) ? 1 : 0;
+
+		sprite_name = filename(file_in[i].name);
+
+		sprite_base_file = file_in[i];
+		sprite_mask_file = file_in[(i+1) % 2];
+
+		sprite_base_image = image_from_file(sprite_base_file);
+		sprite_mask_image = image_from_file(sprite_mask_file);
+
+		masked = true;
+
+	} else {
+		console.error("The files must be 1 or 2 and not " + file_in.length);
+		return;
+	}
+
+	//while(!(sprite_base_image.complete && sprite_mask_image.complete)) {}
+	//load_pixel_data();
+}
+
+function load_pixel_data() {
+
+	sprite_base = pixel_data(sprite_base_image);
+	sprite_mask = masked ? pixel_data(sprite_mask_image) : null;
+
+	colors = collect_colors()
+
+	size.w = sprite_base.width / size.x_count;
+	size.h = sprite_base.height / size.y_count;
+	update_size()
+
+	draw();
+}
+
+function pixel_data(image) {
+
+	const canvas = document.createElement('canvas');
+	canvas.width = image.width;
+	canvas.height = image.height;
+	const g = canvas.getContext('2d');
+	g.drawImage(image, 0, 0, image.width, image.height);
+
+	return g.getImageData(0, 0, image.width, image.height);
+}
+
+function collect_colors() {
+
+	var l = [];
+
+	const d = sprite_base.data;
+
+	for (var i=0; i<d.length; i += 4) {
+
+		if (d[i+3] == 0) continue;
+
+		const c = color_from_array(d, i);
+		const hue = colorhue_from_array(d, i);
+		const entry = hue + ";" + c;
+
+		if (l.indexOf(entry) == -1) l.push(entry);
+
+	}
+
+	l.sort();
+
+	for (var i=0; i<l.length; i++) {
+		l[i] = l[i].split(";")[1];
+	}
+
+	return l;
+}
+
+var draw_part_x = 0;
+var draw_part_y = 0;
+
+function draw() {
+
+	for (var x=0; x<size.x_count; x++) {
+		for (var y=0; y<size.y_count; y++) {
+
+			draw_part(g.sprite, x, y, x, y, size.p);
+
+		}
+	}
+
+	anim_index_y = draw_part_y;
+	draw_part(g.animation, 0, draw_part_y, 0, 0, size.p);
+
+	draw_part(g.part, draw_part_x, draw_part_y, 0, 0,  size.p_edit);
+
+	draw_colors(g.colors);
+
+}
+
+var anim_active = true;
+var anim_index = 0;
+var anim_index_y = 1;
+var anim_index_start = 0;
+var anim_index_end = 6;
+var anim_frame = 100;
+
+function draw_animation() {
+
+	if (!anim_active) return;
+
+	draw_part(g.animation, anim_index, anim_index_y, 0, 0, size.p);
+
+	anim_index += 1;
+	if (anim_index >= anim_index_end) {
+		anim_index = anim_index_start;
+	}
+
+	setTimeout(draw_animation, anim_frame);
+}
+
+function start_animation() {
+	anim_active = true;
+	draw_animation()
+}
+
+function stop_animation() {
+	anim_active = false;
+}
+
+function draw_colors(g) {
+
+	const k = 20;
+
+	g.clearRect(0, 0, 100, 200);
+	g.fillStyle = "#000";
+	g.fillRect(0, 0, 100, 300);
+
+	for (var i=0; i<colors.length; i++) {
+
+		g.fillStyle = colors[i];
+
+		const ix = (i * k) % 100;
+		const iy = ((i / (100 / k))|0) * k
+
+		g.fillRect(ix, iy, k, k);
+
+	}
+
+}
+
+function draw_part(g, px, py, offx, offy, k) {
+
+	const aw = sprite_base.width;
+	const ah = sprite_base.height;
+	const w = aw / size.x_count;
+	const h = ah / size.y_count;
+	const d1 = sprite_base.data;
+	const d2 = masked ? sprite_mask.data : null;
+	let d;
+
+	g.clearRect(offx*w*k, offy*h*k, w * k, h * k);
+
+	if (show.black) {
+		g.fillStyle = "#000";
+		g.fillRect(offx*w*k, offy*h*k, w * k, h * k);
+	}
+
+	for (var x=0; x<w; x++) {
+		for (var y=0; y<h; y++) {
+
+			const i = ( (py*h + y)*aw + (px*w + x) ) * 4;
+
+			if (masked && d2[i+3] != 0) {
+				if (!show.mask) continue;
+				d = d2;
+			} else if (d1[i+3] != 0) {
+				if (!show.base) continue;
+				d = d1;
+			} else {
+				continue;
+			}
+
+			g.fillStyle = color_from_array(d, i);
+			g.fillRect(offx*w*k + x*k, offy*h*k + y*k, k, k);
+
+		}
+	}
+
+}
+
+var mouse_down = false;
+
+function onmousedown_sprite(e) {
+	const x = e.layerX;
+	const y = e.layerY;
+
+	const aw = sprite_base.width;
+	const ah = sprite_base.height;
+	const w = aw / size.x_count;
+	const h = ah / size.y_count;
+	const k = size.p;
+
+	if(e.button == 1) {
+
+		color = color_from_array(g.sprite.getImageData(x, y, 1, 1).data, 0);
+		update_color();
+
+	} else if (e.button == 2){
+
+	} else {
+
+		draw_part_x = (x / k / w)|0;
+		draw_part_y = (y / k / h)|0;
+
+		draw();
+	}
+}
+
+function onmousedown_part(e) {
+	const x = e.layerX;
+	const y = e.layerY;
+
+	const aw = sprite_base.width;
+	const ah = sprite_base.height;
+	const w = aw / size.x_count;
+	const h = ah / size.y_count;
+	const k = size.p_edit;
+
+	if(e.button == 1) {
+
+		color = color_from_array(g.part.getImageData(x, y, 1, 1).data, 0);
+		update_color();
+
+	} else {
+
+		const ax = (draw_part_x*w + x/k)|0;
+		const ay = (draw_part_y*h + y/k)|0;
+		const i = (ay*aw + ax)*4;
+
+		let c = color = qi("color").value;
+		if (e.button == 2) c = color1 = qi("color1").value;
+
+		color_to_array(sprite_base.data, i, c);
+
+		draw();
+	}
+
+	mouse_down = true;
+}
+
+function onmousemove_part(e) {
+	if(!mouse_down) return;
+
+	onmousedown_part(e);
+}
+
+function onmouseup_part(e) {
+
+	mouse_down = false;
+}
+
+function onmousedown_colors(e) {
+	const x = e.layerX;
+	const y = e.layerY;
+
+	if(e.button == 1) {
+
+		color = color_from_array(g.colors.getImageData(x, y, 1, 1).data, 0);
+		update_color();
+
+	} else if (e.button == 2){
+
+		color = color_from_array(g.colors.getImageData(x, y, 1, 1).data, 0);
+		update_color();
+
+	} else {
+
+		color = color_from_array(g.colors.getImageData(x, y, 1, 1).data, 0);
+		update_color();
+	}
+}
+
+function update_color() {
+	qi("color").value = color;
+}
+
+	</script>
+
+</head>
+<body onload="load()">
+
+	<div>
+		<div>
+			<input id="files" type="file" multiple accept="image/*"/>
+			<label hidden for="files" class="button">Load sprites...</label>
+		</div>
+		<button onclick="load_pixel_data()">Load pixel data</button>
+		<button onclick="start_animation()">Start animation</button>
+		<button onclick="stop_animation()">Stop animation</button>
+	</div>
+
+	<canvas id="sprite"></canvas>
+	<canvas id="animation"></canvas>
+	<canvas id="part"></canvas>
+	<canvas id="colors"></canvas>
+
+	<div>
+		<div>
+			<input id="color" type="text" value="rgb(255,255,255)" spellcheck="false">
+			<span class="color_show"></span>
+			<input id="color1" type="text" value="rgb(255,255,255)" spellcheck="false">
+		</div>
+		<div>
+			<button>Swap</button>
+			<button>Push</button>
+			<button>Pop</button>
+		</div>
+	</div>
+
+</body>
+</html>
