@@ -511,20 +511,97 @@ function copy_paste_parts(fx, fy, tx, ty) {
 			for (var c=0; c<4; c++) {
 				d1[i_to + c] = d1[i + c];
 			}
-/*
-			if (masked && d2[i+3] != 0) {
-				if (!show.mask) continue;
-				d = d2;
-			} else if (d1[i+3] != 0) {
-				if (!show.base) continue;
-				d = d1;
-			} else {
-				continue;
-			}
-*/		
+
 		}
 	}
 
+}
+
+function symmetry_v() {
+	let fx = draw_part_x;
+	let fy = draw_part_y;
+
+	const aw = sprite_base.width;
+	const ah = sprite_base.height;
+	const w = aw / size.x_count;
+	const h = ah / size.y_count;
+	const d1 = sprite_base.data;
+	const d2 = masked ? sprite_mask.data : null;
+	let d;
+
+	for (var x=0; x<w; x++) {
+		for (var y=0; y<h; y++) {
+
+			const i = ( (fy*h + y)*aw + (fx*w + x) ) * 4;
+			const x_to = w - x - 1;
+			const y_to = y;
+			const i_to = ( (fy*h + y_to)*aw + (fx*w + x_to) ) * 4;
+
+			for (var c=0; c<4; c++) {
+				d1[i_to + c] = d1[i + c];
+			}
+
+		}
+	}
+	draw();
+}
+
+function symmetry_h() {
+	let fx = draw_part_x;
+	let fy = draw_part_y;
+
+	const aw = sprite_base.width;
+	const ah = sprite_base.height;
+	const w = aw / size.x_count;
+	const h = ah / size.y_count;
+	const d1 = sprite_base.data;
+	const d2 = masked ? sprite_mask.data : null;
+	let d;
+
+	for (var x=0; x<w; x++) {
+		for (var y=0; y<h; y++) {
+
+			const i = ( (fy*h + y)*aw + (fx*w + x) ) * 4;
+			const x_to = x;
+			const y_to = h - y - 1;
+			const i_to = ( (fy*h + y_to)*aw + (fx*w + x_to) ) * 4;
+
+			for (var c=0; c<4; c++) {
+				d1[i_to + c] = d1[i + c];
+			}
+
+		}
+	}
+	draw();
+}
+
+function symmetry_d() {
+	let fx = draw_part_x;
+	let fy = draw_part_y;
+
+	const aw = sprite_base.width;
+	const ah = sprite_base.height;
+	const w = aw / size.x_count;
+	const h = ah / size.y_count;
+	const d1 = sprite_base.data;
+	const d2 = masked ? sprite_mask.data : null;
+	let d;
+
+	for (var y=0; y<h; y++) {
+		for (var x=0; x<w-y; x++) {
+
+			const i = ( (fy*h + y)*aw + (fx*w + x) ) * 4;
+			const x_to = w - x - 1;
+			const y_to = h - y - 1;
+			const i_to = ( (fy*h + y_to)*aw + (fx*w + x_to) ) * 4;
+
+			for (var c=0; c<4; c++) {
+				d1[i_to + c] = d1[i + c];
+			}
+
+		}
+	}
+	draw();
 }
 
 	</script>
@@ -557,6 +634,10 @@ function copy_paste_parts(fx, fy, tx, ty) {
 	<span>|</span>
 	<button onclick="copy_parts(-1)">&lt; Copy</button>
 	<button onclick="copy_parts(1)">Copy &gt;</button>
+	<span>|</span>
+	<button onclick="symmetry_v()">Symmetry |</button>
+	<button onclick="symmetry_h()">Symmetry -</button>
+	<button onclick="symmetry_d()">Symmetry /</button>
 	</div>
 	
 	<div>
