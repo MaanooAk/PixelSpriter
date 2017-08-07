@@ -70,6 +70,10 @@ function color_to_array(d, i, color) {
 	d[i+3] = parseInt(parts[3]);
 }
 
+function limit(x, a, b) {
+	return x<a ? a : x>b ? b : x;
+}
+
 // script.js
 
 var canvas;
@@ -105,7 +109,7 @@ var size = {
 	x_count: 6,
 	y_count: 6,
 	p: 2,
-	p_edit: 8
+	p_edit: 10
 }
 
 function load() {
@@ -116,14 +120,16 @@ function load() {
 		colors: qi("colors"),
 		sprite: qi("sprite"),
 		animation: qi("animation"),
-		part: qi("part")
+		part: qi("part"),
+		real: qi("real")
 	};
 
 	g = {
 		colors: canvas.colors.getContext("2d"),
 		sprite: canvas.sprite.getContext("2d"),
 		animation: canvas.animation.getContext("2d"),
-		part: canvas.part.getContext("2d")
+		part: canvas.part.getContext("2d"),
+		real: canvas.real.getContext("2d")
 	};
 
 	// events
@@ -154,7 +160,7 @@ function update_size() {
 	set_size(canvas.sprite, size.w * size.x_count * size.p, size.h * size.y_count * size.p);
 	set_size(canvas.animation, size.w * size.p, size.h * size.p);
 	set_size(canvas.part, size.w * size.p_edit, size.h * size.p_edit);
-
+	set_size(canvas.real, size.w * size.x_count, size.h * size.y_count);
 }
 
 function set_size(i, width, height) {
@@ -199,6 +205,9 @@ function files_changed() {
 }
 
 function load_pixel_data() {
+
+	size.x_count = parseInt(qi("x_count").value);
+	size.y_count = parseInt(qi("y_count").value);
 
 	sprite_base = pixel_data(sprite_base_image);
 	sprite_mask = masked ? pixel_data(sprite_mask_image) : null;
@@ -270,13 +279,22 @@ function draw() {
 
 	draw_colors(g.colors);
 
+	let tmp = show.black;
+	show.black = false;
+	for (var x=0; x<size.x_count; x++) {
+		for (var y=0; y<size.y_count; y++) {
+
+			draw_part(g.real, x, y, x, y, 1);
+
+		}
+	}
+	show.black = tmp;
+
 }
 
 var anim_active = true;
 var anim_index = 0;
 var anim_index_y = 1;
-var anim_index_start = 0;
-var anim_index_end = 6;
 var anim_frame = 100;
 
 function draw_animation() {
@@ -286,8 +304,8 @@ function draw_animation() {
 	draw_part(g.animation, anim_index, anim_index_y, 0, 0, size.p);
 
 	anim_index += 1;
-	if (anim_index >= anim_index_end) {
-		anim_index = anim_index_start;
+	if (anim_index >= size.x_count) {
+		anim_index = 0;
 	}
 
 	setTimeout(draw_animation, anim_frame);
@@ -459,6 +477,56 @@ function update_color() {
 	qi("color").value = color;
 }
 
+function change_draw_part(diff) {
+	draw_part_x = limit(draw_part_x + diff, 0, size.x_count - 1);
+	draw();
+}
+
+function copy_parts(diff) {
+	if (limit(draw_part_x + diff, 0, size.x_count - 1) == draw_part_x) {
+		alert("!!");
+		return;
+	}
+	
+	copy_paste_parts(draw_part_x, draw_part_y, draw_part_x + diff, draw_part_y);
+	change_draw_part(diff)
+}
+
+function copy_paste_parts(fx, fy, tx, ty) {
+
+	const aw = sprite_base.width;
+	const ah = sprite_base.height;
+	const w = aw / size.x_count;
+	const h = ah / size.y_count;
+	const d1 = sprite_base.data;
+	const d2 = masked ? sprite_mask.data : null;
+	let d;
+
+	for (var x=0; x<w; x++) {
+		for (var y=0; y<h; y++) {
+
+			const i = ( (fy*h + y)*aw + (fx*w + x) ) * 4;
+			const i_to = ( (ty*h + y)*aw + (tx*w + x) ) * 4;
+
+			for (var c=0; c<4; c++) {
+				d1[i_to + c] = d1[i + c];
+			}
+/*
+			if (masked && d2[i+3] != 0) {
+				if (!show.mask) continue;
+				d = d2;
+			} else if (d1[i+3] != 0) {
+				if (!show.base) continue;
+				d = d1;
+			} else {
+				continue;
+			}
+*/		
+		}
+	}
+
+}
+
 	</script>
 
 </head>
@@ -470,6 +538,8 @@ function update_color() {
 			<label hidden for="files" class="button">Load sprites...</label>
 		</div>
 		<button onclick="load_pixel_data()">Load pixel data</button>
+		<input id="x_count" type="text" value="6" spellcheck="false" style="width: 40px; text-align: center;">
+		<input id="y_count" type="text" value="6" spellcheck="false" style="width: 40px; text-align: center;">
 		<button onclick="start_animation()">Start animation</button>
 		<button onclick="stop_animation()">Stop animation</button>
 	</div>
@@ -478,7 +548,17 @@ function update_color() {
 	<canvas id="animation"></canvas>
 	<canvas id="part"></canvas>
 	<canvas id="colors"></canvas>
-
+	
+	<div>
+	<button onclick="change_draw_part(-1000)">&lt;&lt;</button>
+	<button onclick="change_draw_part(-1)">&lt;</button>
+	<button onclick="change_draw_part(1)">&gt;</button>
+	<button onclick="change_draw_part(1000)">&gt;&gt;</button>
+	<span>|</span>
+	<button onclick="copy_parts(-1)">&lt; Copy</button>
+	<button onclick="copy_parts(1)">Copy &gt;</button>
+	</div>
+	
 	<div>
 		<div>
 			<input id="color" type="text" value="rgb(255,255,255)" spellcheck="false">
@@ -491,6 +571,8 @@ function update_color() {
 			<button>Pop</button>
 		</div>
 	</div>
+	
+	<canvas id="real"></canvas>
 
 </body>
 </html>
