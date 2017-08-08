@@ -477,19 +477,29 @@ function update_color() {
 	qi("color").value = color;
 }
 
+function color_swap() {
+	var c1 = qi("color").value;
+	var c2 = qi("color1").value;
+	qi("color").value = c2;
+	qi("color1").value = c1;
+}
+
 function change_draw_part(diff) {
 	draw_part_x = limit(draw_part_x + diff, 0, size.x_count - 1);
 	draw();
 }
 
-function copy_parts(diff) {
-	if (limit(draw_part_x + diff, 0, size.x_count - 1) == draw_part_x) {
+function copy_parts(diffx, diffy) {
+	if (limit(draw_part_x + diffx, 0, size.x_count - 1) == draw_part_x && limit(draw_part_y + diffy, 0, size.y_count - 1) == draw_part_y) {
 		alert("!!");
 		return;
 	}
 	
-	copy_paste_parts(draw_part_x, draw_part_y, draw_part_x + diff, draw_part_y);
-	change_draw_part(diff)
+	copy_paste_parts(draw_part_x, draw_part_y, draw_part_x + diffx, draw_part_y + diffy);
+	
+	draw_part_x = draw_part_x + diffx;
+	draw_part_y = draw_part_y + diffy;
+	draw();
 }
 
 function copy_paste_parts(fx, fy, tx, ty) {
@@ -632,24 +642,28 @@ function symmetry_d() {
 	<button onclick="change_draw_part(1)">&gt;</button>
 	<button onclick="change_draw_part(1000)">&gt;&gt;</button>
 	<span>|</span>
-	<button onclick="copy_parts(-1)">&lt; Copy</button>
-	<button onclick="copy_parts(1)">Copy &gt;</button>
+	Copy
+	<button onclick="copy_parts(-1, 0)">&lt;</button>
+	<button onclick="copy_parts(1, 0)">&gt;</button>
+	<button onclick="copy_parts(0, -1)">^</button>
+	<button onclick="copy_parts(0, 1)">V</button>
 	<span>|</span>
-	<button onclick="symmetry_v()">Symmetry |</button>
-	<button onclick="symmetry_h()">Symmetry -</button>
-	<button onclick="symmetry_d()">Symmetry /</button>
+	Symmetry
+	<button onclick="symmetry_v()">|</button>
+	<button onclick="symmetry_h()">-</button>
+	<button onclick="symmetry_d()">/</button>
 	</div>
 	
 	<div>
 		<div>
 			<input id="color" type="text" value="rgb(255,255,255)" spellcheck="false">
 			<span class="color_show"></span>
-			<input id="color1" type="text" value="rgb(255,255,255)" spellcheck="false">
+			<input id="color1" type="text" value="rgba(0,0,0,0)" spellcheck="false">
 		</div>
 		<div>
-			<button>Swap</button>
-			<button>Push</button>
-			<button>Pop</button>
+			<button onclick="color_swap()">Swap</button>
+			<button onclick="color_push()">Push</button>
+			<button onclick="color_pop()">Pop</button>
 		</div>
 	</div>
 	
