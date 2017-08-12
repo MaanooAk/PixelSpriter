@@ -484,6 +484,20 @@ function color_swap() {
 	qi("color1").value = c1;
 }
 
+var color_stack = [];
+
+function color_push() {
+	color_stack.push(qi("color").value);
+}
+
+function color_pop() {
+	set_color(color_stack.pop());
+}
+
+function set_color(text) {
+	qi("color").value = text;
+}
+
 function change_draw_part(diff) {
 	draw_part_x = limit(draw_part_x + diff, 0, size.x_count - 1);
 	draw();
@@ -664,6 +678,12 @@ function symmetry_d() {
 			<button onclick="color_swap()">Swap</button>
 			<button onclick="color_push()">Push</button>
 			<button onclick="color_pop()">Pop</button>
+			<span>|</span>
+			Colors
+			<button onclick="set_color('transparent')">&nbsp;</button>
+			<button onclick="set_color('black')">0</button>
+			<button onclick="set_color('grey')">&frac12;</button>
+			<button onclick="set_color('white')">1</button>
 		</div>
 	</div>
 	
